@@ -1,10 +1,18 @@
-import { HandleQuery, QueryHandler } from '../../../lib';
+import { HandleQuery, QueryHandler, QueryMessage } from '@declanprice/noxa';
+import { DatabaseClient } from '@declanprice/noxa/dist/lib/store/database-client.service';
 import { GetPaymentByIdQuery } from '../api/queries/get-payment-by-id.query';
-import { paymentsTable } from '../../schema';
 
 @QueryHandler(GetPaymentByIdQuery)
 export class GetPaymentByIdHandler extends HandleQuery {
-    async handle(query: GetPaymentByIdQuery) {
-        return this.dataStore.get(paymentsTable, query.id);
+    constructor(readonly db: DatabaseClient) {
+        super();
+    }
+
+    async handle(query: QueryMessage<GetPaymentByIdQuery>) {
+        return this.db.payments.findUniqueOrThrow({
+            where: {
+                id: query.data.id,
+            },
+        });
     }
 }

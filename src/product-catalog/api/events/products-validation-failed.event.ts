@@ -1,3 +1,3 @@
 export class ProductsValidationFailedEvent {
-    constructor(private orderId: string) {}
+    constructor(readonly orderId: string) {}
 }

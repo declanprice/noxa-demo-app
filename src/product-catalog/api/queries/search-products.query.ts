@@ -1,3 +1,3 @@
 export class SearchProductsQuery {
-    constructor(readonly params?: { name?: string }) {}
+    constructor(readonly name?: string) {}
 }

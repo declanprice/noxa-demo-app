@@ -1,16 +1,30 @@
-import { CommandHandler, DatabaseSession, HandleCommand } from '../../../lib';
+import {
+    CommandHandler,
+    CommandMessage,
+    HandleCommand,
+} from '@declanprice/noxa';
 import { SetInventoryQuantityCommand } from '../api/commands/set-inventory-quantity.command';
-import { inventoryTable } from '../../schema';
+import { DatabaseClient } from '@declanprice/noxa/dist/lib/store/database-client.service';
 
 @CommandHandler(SetInventoryQuantityCommand)
 export class SetInventoryQuantityHandler extends HandleCommand {
-    async handle(
-        command: SetInventoryQuantityCommand,
-        session: DatabaseSession,
-    ) {
-        return session.dataStore.store(inventoryTable, {
-            id: command.inventoryId,
-            quantityAvailable: command.quantity,
+    constructor(readonly db: DatabaseClient) {
+        super();
+    }
+
+    async handle(command: CommandMessage<SetInventoryQuantityCommand>) {
+        return this.db.inventory.upsert({
+            where: {
+                id: command.data.inventoryId,
+            },
+            create: {
+                id: command.data.inventoryId,
+                quantityAvailable: command.data.quantity,
+            },
+            update: {
+                id: command.data.inventoryId,
+                quantityAvailable: command.data.quantity,
+            },
         });
     }
 }

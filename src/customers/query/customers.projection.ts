@@ -1,18 +1,23 @@
-import { DataProjection, ProjectionEventHandler } from '../../../lib';
-
-import { Customer, customersTable } from '../../schema';
+import { Projection, ProjectionHandler } from '@declanprice/noxa';
+import { ProjectionSession } from '@declanprice/noxa/dist/lib/handlers/projection/projection-session.type';
 
 import { CustomerRegistered } from '../api/events/customer-registered.event';
 
-@DataProjection(customersTable)
+@Projection({
+    batchSize: 100,
+})
 export class CustomersProjection {
-    @ProjectionEventHandler(CustomerRegistered, (e) => e.customerId)
-    onRegistered(event: CustomerRegistered): Customer {
-        return {
-            id: event.customerId,
-            firstName: event.firstName,
-            lastName: event.lastName,
-            email: event.email,
-        };
+    @ProjectionHandler(CustomerRegistered)
+    onRegistered(session: ProjectionSession<CustomerRegistered>) {
+        const { event, tx } = session;
+
+        return tx.customers.create({
+            data: {
+                id: event.data.customerId,
+                firstName: event.data.firstName,
+                lastName: event.data.lastName,
+                email: event.data.email,
+            },
+        });
     }
 }

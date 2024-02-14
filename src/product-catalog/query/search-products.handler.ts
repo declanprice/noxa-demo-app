@@ -1,17 +1,24 @@
-import { HandleQuery, QueryHandler } from '../../../lib';
-import { productsTable } from '../../schema';
+import { HandleQuery, QueryHandler, QueryMessage } from '@declanprice/noxa';
+import { DatabaseClient } from '@declanprice/noxa/dist/lib/store/database-client.service';
 import { SearchProductsQuery } from '../api/queries/search-products.query';
-import { eq } from 'drizzle-orm';
 
 @QueryHandler(SearchProductsQuery)
 export class SearchProductsHandler extends HandleQuery {
-    async handle(query: SearchProductsQuery) {
-        if (query.params?.name) {
-            return this.dataStore
-                .query(productsTable)
-                .where(eq(productsTable.name, query.params.name));
+    constructor(readonly db: DatabaseClient) {
+        super();
+    }
+
+    async handle(query: QueryMessage<SearchProductsQuery>) {
+        const { data } = query;
+
+        if (data?.name) {
+            return this.db.products.findMany({
+                where: {
+                    name: data.name,
+                },
+            });
         }
 
-        return this.dataStore.query(productsTable);
+        return this.db.products.findMany();
     }
 }

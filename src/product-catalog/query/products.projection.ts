@@ -1,29 +1,41 @@
-import { DataProjection, ProjectionEventHandler } from '../../../lib';
-import { Product, productsTable } from '../../schema';
+import { Projection, ProjectionHandler } from '@declanprice/noxa';
+import { ProjectionSession } from '@declanprice/noxa/dist/lib/handlers/projection/projection-session.type';
 import { ProductAddedToCatalog } from '../api/events/product-added-to-catalog.event';
 import { ProductRemovedFromCatalog } from '../api/events/product-removed-from-catalog.event';
 
-@DataProjection(productsTable)
+@Projection({
+    batchSize: 100,
+})
 export class ProductsProjection {
-    @ProjectionEventHandler(ProductAddedToCatalog, (e) => e.productId)
-    onRegistered(event: ProductAddedToCatalog): Product {
-        return {
-            id: event.productId,
-            inventoryId: event.inventoryId,
-            name: event.name,
-            description: event.name,
-            category: event.category,
-            price: event.price,
-            photoUrl: event.photoUrl,
-            removed: false,
-        };
+    @ProjectionHandler(ProductAddedToCatalog)
+    onRegistered(session: ProjectionSession<ProductAddedToCatalog>) {
+        const { event, tx } = session;
+
+        return tx.products.create({
+            data: {
+                id: event.data.productId,
+                inventoryId: event.data.inventoryId,
+                name: event.data.name,
+                description: event.data.name,
+                category: event.data.category,
+                price: event.data.price,
+                photoUrl: event.data.photoUrl,
+                removed: false,
+            },
+        });
     }
 
-    @ProjectionEventHandler(ProductRemovedFromCatalog, (e) => e.id)
-    onRemoved(event: ProductRemovedFromCatalog, existing: Product): Product {
-        return {
-            ...existing,
-            removed: true,
-        };
+    @ProjectionHandler(ProductRemovedFromCatalog)
+    onRemoved(session: ProjectionSession<ProductRemovedFromCatalog>) {
+        const { event, tx } = session;
+
+        return tx.products.update({
+            where: {
+                id: event.data.id,
+            },
+            data: {
+                removed: false,
+            },
+        });
     }
 }

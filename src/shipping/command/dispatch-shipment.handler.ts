@@ -1,21 +1,32 @@
-import { CommandHandler, DatabaseSession, HandleCommand } from '../../../lib';
+import {
+    CommandHandler,
+    CommandMessage,
+    EventStore,
+    HandleCommand,
+} from '@declanprice/noxa';
 import { ShipmentStream } from './shipment.stream';
 import { DispatchShipmentCommand } from '../api/commands/dispatch-shipment.command';
 import { ShipmentDispatchedEvent } from '../api/events/shipment-dispatched.event';
 
 @CommandHandler(DispatchShipmentCommand)
 export class DispatchShipmentHandler extends HandleCommand {
-    async handle(command: DispatchShipmentCommand, session: DatabaseSession) {
-        await session.eventStore.startStream(
+    constructor(readonly event: EventStore) {
+        super();
+    }
+
+    async handle(command: CommandMessage<DispatchShipmentCommand>) {
+        const { data } = command;
+
+        return this.event.startStream(
             ShipmentStream,
-            command.shipmentId,
+            data.shipmentId,
             new ShipmentDispatchedEvent(
-                command.shipmentId,
-                command.orderId,
-                command.addressLine1,
-                command.addressLine2,
-                command.city,
-                command.postcode,
+                data.shipmentId,
+                data.orderId,
+                data.addressLine1,
+                data.addressLine2,
+                data.city,
+                data.postcode,
             ),
         );
     }

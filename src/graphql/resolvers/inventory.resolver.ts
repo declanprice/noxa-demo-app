@@ -1,9 +1,9 @@
 import { Resolver, Query, Args, Mutation, Int } from '@nestjs/graphql';
-import { CommandBus, QueryBus } from '../../../lib';
 import { FindInventoryByIdsQuery } from '../../inventory/api/queries/find-inventory-by-ids.query';
 import { GetInventoryByIdQuery } from '../../inventory/api/queries/get-inventory-by-id.query';
 import { Inventory } from '../model/inventory.model';
 import { SetInventoryQuantityCommand } from '../../inventory/api/commands/set-inventory-quantity.command';
+import { CommandBus, QueryBus } from '@declanprice/noxa';
 
 @Resolver((of: any) => Inventory)
 export class InventoryResolver {

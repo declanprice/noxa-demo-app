@@ -1,5 +1,10 @@
+import {
+    CommandHandler,
+    CommandMessage,
+    EventStore,
+    HandleCommand,
+} from '@declanprice/noxa';
 import { BadRequestException } from '@nestjs/common';
-import { CommandHandler, DatabaseSession, HandleCommand } from '../../../lib';
 import { ShipmentStream } from './shipment.stream';
 import { DeliverShipmentCommand } from '../api/commands/deliver-shipment.command';
 import { ShippingStatus } from '../api/commands/shipping-status.enum';
@@ -7,10 +12,16 @@ import { ShipmentDeliveredEvent } from '../api/events/shipment-delivered.event';
 
 @CommandHandler(DeliverShipmentCommand)
 export class DeliverShipmentHandler extends HandleCommand {
-    async handle(command: DeliverShipmentCommand, session: DatabaseSession) {
-        const shipment = await session.eventStore.hydrateStream(
+    constructor(readonly event: EventStore) {
+        super();
+    }
+
+    async handle(command: CommandMessage<DeliverShipmentCommand>) {
+        const { data } = command;
+
+        const shipment = await this.event.hydrateStream(
             ShipmentStream,
-            command.shipmentId,
+            data.shipmentId,
         );
 
         if (shipment.status !== ShippingStatus.DISPATCHED) {
@@ -19,10 +30,10 @@ export class DeliverShipmentHandler extends HandleCommand {
             );
         }
 
-        await session.eventStore.appendEvent(
+        await this.event.appendEvent(
             ShipmentStream,
-            command.shipmentId,
-            new ShipmentDeliveredEvent(command.shipmentId, command.orderId),
+            data.shipmentId,
+            new ShipmentDeliveredEvent(data.shipmentId, data.orderId),
         );
     }
 }

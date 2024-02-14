@@ -1,7 +1,7 @@
-import { Stream, StreamEventHandler } from '../../../lib';
 import { ShipmentDispatchedEvent } from '../api/events/shipment-dispatched.event';
 import { ShipmentDeliveredEvent } from '../api/events/shipment-delivered.event';
 import { ShippingStatus } from '../api/commands/shipping-status.enum';
+import { Stream, StreamHandler } from '@declanprice/noxa';
 
 @Stream()
 export class ShipmentStream {
@@ -13,7 +13,7 @@ export class ShipmentStream {
     postcode: string;
     status: ShippingStatus;
 
-    @StreamEventHandler(ShipmentDispatchedEvent)
+    @StreamHandler(ShipmentDispatchedEvent)
     onRegistered(event: ShipmentDispatchedEvent) {
         this.shipmentId = event.shipmentId;
         this.orderId = event.orderId;
@@ -24,7 +24,7 @@ export class ShipmentStream {
         this.status = ShippingStatus.DISPATCHED;
     }
 
-    @StreamEventHandler(ShipmentDeliveredEvent)
+    @StreamHandler(ShipmentDeliveredEvent)
     onDelivered(event: ShipmentDeliveredEvent) {
         this.status = ShippingStatus.DELIVERED;
     }

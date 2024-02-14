@@ -1,10 +1,18 @@
-import { HandleQuery, QueryHandler } from '../../../lib';
-import { inventoryTable } from '../../schema';
+import { HandleQuery, QueryHandler, QueryMessage } from '@declanprice/noxa';
+import { DatabaseClient } from '@declanprice/noxa/dist/lib/store/database-client.service';
 import { GetInventoryByIdQuery } from '../api/queries/get-inventory-by-id.query';
 
 @QueryHandler(GetInventoryByIdQuery)
 export class GetInventoryByIdHandler extends HandleQuery {
-    async handle(query: GetInventoryByIdQuery) {
-        return this.dataStore.get(inventoryTable, query.id);
+    constructor(readonly db: DatabaseClient) {
+        super();
+    }
+
+    async handle(query: QueryMessage<GetInventoryByIdQuery>) {
+        return this.db.inventory.findUniqueOrThrow({
+            where: {
+                id: query.data.id,
+            },
+        });
     }
 }

@@ -1,4 +1,4 @@
-import { Stream, StreamEventHandler } from '../../../lib';
+import { Stream, StreamHandler } from '@declanprice/noxa';
 
 import { CustomerRegistered } from '../api/events/customer-registered.event';
 
@@ -9,7 +9,7 @@ export class CustomerStream {
     lastName: string;
     email: string;
 
-    @StreamEventHandler(CustomerRegistered)
+    @StreamHandler(CustomerRegistered)
     onRegistered(event: CustomerRegistered) {
         this.customerId = event.customerId;
         this.firstName = event.firstName;

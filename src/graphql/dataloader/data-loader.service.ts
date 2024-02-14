@@ -1,7 +1,7 @@
-import { QueryBus } from '../../../lib';
 import * as DataLoader from 'dataloader';
 import { Inventory } from '../model/inventory.model';
 import { FindInventoryByIdsQuery } from '../../inventory/api/queries/find-inventory-by-ids.query';
+import { QueryBus } from '@declanprice/noxa';
 
 export class DataLoaderService {
     constructor(readonly queryBus: QueryBus) {}

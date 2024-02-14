@@ -1,19 +1,31 @@
-import { CommandHandler, DatabaseSession, HandleCommand } from '../../../lib';
+import {
+    CommandHandler,
+    CommandMessage,
+    EventStore,
+    HandleCommand,
+} from '@declanprice/noxa';
+
 import { OrderStream } from './order.stream';
 import { OrderRequestedEvent } from '../api/events/order-requested.event';
 import { RequestOrderCommand } from '../api/commands/request-order.command';
 
 @CommandHandler(RequestOrderCommand)
 export class RequestOrderHandler extends HandleCommand {
-    async handle(command: RequestOrderCommand, session: DatabaseSession) {
-        await session.eventStore.startStream(
+    constructor(readonly event: EventStore) {
+        super();
+    }
+
+    async handle(command: CommandMessage<RequestOrderCommand>) {
+        const { data } = command;
+
+        return this.event.startStream(
             OrderStream,
-            command.orderId,
+            data.orderId,
             new OrderRequestedEvent(
-                command.orderId,
-                command.customerId,
-                command.paymentId,
-                command.lineItems,
+                data.orderId,
+                data.customerId,
+                data.paymentId,
+                data.lineItems,
             ),
         );
     }

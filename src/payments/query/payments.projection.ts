@@ -1,25 +1,38 @@
-import { DataProjection, ProjectionEventHandler } from '../../../lib';
-import { Payment, paymentsTable } from '../../schema';
+import { Projection, ProjectionHandler } from '@declanprice/noxa';
+import { ProjectionSession } from '@declanprice/noxa/dist/lib/handlers/projection/projection-session.type';
+
 import { PaymentCapturedEvent } from '../api/events/payment-captured.event';
 import { PaymentRefundedEvent } from '../api/events/payment-refunded.event';
 
-@DataProjection(paymentsTable)
+@Projection({
+    batchSize: 100,
+})
 export class PaymentsProjection {
-    @ProjectionEventHandler(PaymentCapturedEvent, (e) => e.paymentId)
-    onRegistered(event: PaymentCapturedEvent): Payment {
-        return {
-            id: event.paymentId,
-            amount: event.amount,
-            orderId: event.orderId,
-            refunded: false,
-        };
+    @ProjectionHandler(PaymentCapturedEvent)
+    onRegistered(session: ProjectionSession<PaymentCapturedEvent>) {
+        const { event, tx } = session;
+
+        return tx.payments.create({
+            data: {
+                id: event.data.paymentId,
+                amount: event.data.amount,
+                orderId: event.data.orderId,
+                refunded: false,
+            },
+        });
     }
 
-    @ProjectionEventHandler(PaymentRefundedEvent, (e) => e.paymentId)
-    onRefunded(event: PaymentRefundedEvent, existing: Payment): Payment {
-        return {
-            ...existing,
-            refunded: true,
-        };
+    @ProjectionHandler(PaymentRefundedEvent)
+    onRefunded(session: ProjectionSession<PaymentCapturedEvent>) {
+        const { event, tx } = session;
+
+        return tx.payments.update({
+            where: {
+                id: event.data.paymentId,
+            },
+            data: {
+                refunded: true,
+            },
+        });
     }
 }

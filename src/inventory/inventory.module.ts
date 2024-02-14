@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { InventoryController } from './inventory.controller';
 import { SetInventoryQuantityHandler } from './command/set-inventory-quantity.handler';
 import { GetInventoryByIdHandler } from './query/get-inventory-by-id.handler';
 import { FindInventoryByIdsHandler } from './query/find-inventory-by-ids.handler';
@@ -10,7 +9,7 @@ import { FindInventoryByIdsHandler } from './query/find-inventory-by-ids.handler
         GetInventoryByIdHandler,
         FindInventoryByIdsHandler,
     ],
-    controllers: [InventoryController],
+    controllers: [],
     providers: [],
 })
 export class InventoryModule {}

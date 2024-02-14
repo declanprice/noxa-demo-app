@@ -1,14 +1,35 @@
-import { CommandHandler, DatabaseSession, HandleCommand } from '../../../lib';
+import {
+    CommandHandler,
+    CommandMessage,
+    EventStore,
+    HandleCommand,
+    OutboxStore,
+} from '@declanprice/noxa';
+import {
+    DatabaseClient,
+    DatabaseTransactionClient,
+} from '@declanprice/noxa/dist/lib/store/database-client.service';
+
 import { PaymentStream } from './payment.stream';
 import { CapturePaymentCommand } from '../api/commands/capture-payment.command';
 import { PaymentCapturedEvent } from '../api/events/payment-captured.event';
 
 @CommandHandler(CapturePaymentCommand)
 export class CapturePaymentHandler extends HandleCommand {
-    async handle(command: CapturePaymentCommand, session: DatabaseSession) {
-        const payment = await session.eventStore.hydrateStream(
+    constructor(
+        readonly db: DatabaseClient,
+        readonly event: EventStore,
+        readonly outbox: OutboxStore,
+    ) {
+        super();
+    }
+
+    async handle(command: CommandMessage<CapturePaymentCommand>) {
+        const { data } = command;
+
+        const payment = await this.event.hydrateStream(
             PaymentStream,
-            command.paymentId,
+            data.paymentId,
         );
 
         if (payment.captured) {
@@ -18,17 +39,20 @@ export class CapturePaymentHandler extends HandleCommand {
         }
 
         const capturedEvent = new PaymentCapturedEvent(
-            command.paymentId,
+            data.paymentId,
             payment.orderId,
             payment.amount,
         );
 
-        await session.eventStore.startStream(
-            PaymentStream,
-            command.paymentId,
-            capturedEvent,
-        );
+        await this.db.$transaction(async (tx) => {
+            await this.event.startStream(
+                PaymentStream,
+                data.paymentId,
+                capturedEvent,
+                { tx },
+            );
 
-        await session.outboxStore.publishEvent(capturedEvent);
+            await this.outbox.event(capturedEvent, { tx });
+        });
     }
 }

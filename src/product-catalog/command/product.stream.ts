@@ -1,6 +1,6 @@
-import { Stream, StreamEventHandler } from '../../../lib';
 import { ProductAddedToCatalog } from '../api/events/product-added-to-catalog.event';
 import { ProductRemovedFromCatalog } from '../api/events/product-removed-from-catalog.event';
+import { Stream, StreamHandler } from '@declanprice/noxa';
 
 @Stream()
 export class ProductStream {
@@ -12,7 +12,7 @@ export class ProductStream {
     photoUrl: string | null;
     removed: boolean;
 
-    @StreamEventHandler(ProductAddedToCatalog)
+    @StreamHandler(ProductAddedToCatalog)
     onRegistered(event: ProductAddedToCatalog) {
         this.productId = event.productId;
         this.inventoryId = event.inventoryId;
@@ -23,7 +23,7 @@ export class ProductStream {
         this.removed = false;
     }
 
-    @StreamEventHandler(ProductRemovedFromCatalog)
+    @StreamHandler(ProductRemovedFromCatalog)
     onRemoved(event: ProductAddedToCatalog) {
         this.removed = true;
     }

@@ -1,46 +1,70 @@
-import { DataProjection, ProjectionEventHandler } from '../../../lib';
+import { Projection, ProjectionHandler } from '@declanprice/noxa';
+import { ProjectionSession } from '@declanprice/noxa/dist/lib/handlers/projection/projection-session.type';
 
-import { Order, ordersTable } from '../../schema';
 import { OrderRequestedEvent } from '../api/events/order-requested.event';
 import { OrderStatus } from '../api/commands/order-status.enum';
 import { OrderPlacedEvent } from '../api/events/order-placed.event';
 import { OrderCanceledEvent } from '../api/events/order-canceled.event';
 import { OrderCompleteEvent } from '../api/events/order-complete.event';
 
-@DataProjection(ordersTable)
+@Projection({
+    batchSize: 100,
+})
 export class OrdersProjection {
-    @ProjectionEventHandler(OrderRequestedEvent, (e) => e.orderId)
-    onRequested(event: OrderRequestedEvent): Order {
-        return {
-            id: event.orderId,
-            customerId: event.customerId,
-            paymentId: event.paymentId,
-            lineItems: event.lineItems,
-            status: OrderStatus.REQUESTED,
-        };
+    @ProjectionHandler(OrderRequestedEvent)
+    onRequested(session: ProjectionSession<OrderRequestedEvent>) {
+        const { event, tx } = session;
+
+        return tx.orders.create({
+            data: {
+                id: event.data.orderId,
+                customerId: event.data.customerId,
+                paymentId: event.data.paymentId,
+                lineItems: event.data.lineItems,
+                status: OrderStatus.REQUESTED,
+            },
+        });
     }
 
-    @ProjectionEventHandler(OrderPlacedEvent, (e) => e.orderId)
-    onPlaced(event: OrderPlacedEvent, existing: Order): Order {
-        return {
-            ...existing,
-            status: OrderStatus.PLACED,
-        };
+    @ProjectionHandler(OrderPlacedEvent)
+    onPlaced(session: ProjectionSession<OrderRequestedEvent>) {
+        const { event, tx } = session;
+
+        return tx.orders.update({
+            where: {
+                id: event.data.orderId,
+            },
+            data: {
+                status: OrderStatus.PLACED,
+            },
+        });
     }
 
-    @ProjectionEventHandler(OrderCanceledEvent, (e) => e.orderId)
-    onCanceled(event: OrderCanceledEvent, existing: Order): Order {
-        return {
-            ...existing,
-            status: OrderStatus.CANCELLED,
-        };
+    @ProjectionHandler(OrderCanceledEvent)
+    onCanceled(session: ProjectionSession<OrderRequestedEvent>) {
+        const { event, tx } = session;
+
+        return tx.orders.update({
+            where: {
+                id: event.data.orderId,
+            },
+            data: {
+                status: OrderStatus.CANCELLED,
+            },
+        });
     }
 
-    @ProjectionEventHandler(OrderCompleteEvent, (e) => e.orderId)
-    onComplete(event: OrderCompleteEvent, existing: Order): Order {
-        return {
-            ...existing,
-            status: OrderStatus.COMPLETE,
-        };
+    @ProjectionHandler(OrderCompleteEvent)
+    onComplete(session: ProjectionSession<OrderRequestedEvent>) {
+        const { event, tx } = session;
+
+        return tx.orders.update({
+            where: {
+                id: event.data.orderId,
+            },
+            data: {
+                status: OrderStatus.COMPLETE,
+            },
+        });
     }
 }

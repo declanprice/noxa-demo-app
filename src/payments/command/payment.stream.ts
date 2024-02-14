@@ -1,4 +1,5 @@
-import { Stream, StreamEventHandler } from '../../../lib';
+import { Stream, StreamHandler } from '@declanprice/noxa';
+
 import { PaymentCapturedEvent } from '../api/events/payment-captured.event';
 import { PaymentRefundedEvent } from '../api/events/payment-refunded.event';
 import { PaymentCreatedEvent } from '../api/events/payment-created.event';
@@ -11,7 +12,7 @@ export class PaymentStream {
     captured: boolean;
     refunded: boolean;
 
-    @StreamEventHandler(PaymentCreatedEvent)
+    @StreamHandler(PaymentCreatedEvent)
     onCreated(event: PaymentCreatedEvent) {
         this.paymentId = event.paymentId;
         this.orderId = event.orderId;
@@ -20,12 +21,12 @@ export class PaymentStream {
         this.captured = false;
     }
 
-    @StreamEventHandler(PaymentCapturedEvent)
+    @StreamHandler(PaymentCapturedEvent)
     onRegistered(event: PaymentCapturedEvent) {
         this.captured = true;
     }
 
-    @StreamEventHandler(PaymentRefundedEvent)
+    @StreamHandler(PaymentRefundedEvent)
     onRefunded(event: PaymentRefundedEvent) {
         this.refunded = true;
     }

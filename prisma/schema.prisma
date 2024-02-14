@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = "postgres://postgres:postgres@localhost:5432/postgres"
+}
+
+model streams {
+  id              String   @id @db.Uuid
+  type            String
+  version         Int      @default(0)
+  snapshot        Json?
+  snapshotVersion Int?
+  timestamp       DateTime @default(now())
+  isArchived      Boolean  @default(false)
+  events          events[]
+}
+
+model events {
+  id            BigInt   @id @default(autoincrement())
+  streamId      String   @db.Uuid
+  transactionId String   @default(dbgenerated("pg_current_xact_id()"))
+  version       Int      @default(0)
+  data          Json
+  type          String
+  timestamp     DateTime @default(now())
+  isArchived    Boolean  @default(false)
+  stream        streams  @relation(fields: [streamId], references: [id])
+
+  @@unique([streamId, version])
+  @@index([type, id, transactionId])
+}
+
+model outbox {
+  id                 String    @id @db.Uuid
+  bus                String
+  timestamp          DateTime  @default(now())
+  type               String
+  data               Json
+  published          Boolean   @default(false)
+  publishedTimestamp DateTime?
+}
+
+model tokens {
+  name              String   @id
+  lastEventId       BigInt   @default(0)
+  lastTransactionId String   @default("0")
+  timestamp         DateTime @default(now())
+}
+
+model processes {
+  id           String   @id @db.Uuid
+  type         String
+  data         Json
+  associations Json
+  hasEnded     Boolean
+  timestamp    DateTime
+
+  @@index([associations])
+}
+
+model customers {
+  id        String @id @db.Uuid
+  firstName String
+  lastName  String
+  email     String
+}
+
+model inventory {
+  id                String @id @db.Uuid
+  quantityAvailable Int
+}
+
+model payments {
+  id       String  @id @db.Uuid
+  amount   Int
+  orderId  String  @db.Uuid
+  refunded Boolean
+}
+
+model shipments {
+  id           String @id @db.Uuid
+  orderId      String @db.Uuid
+  addressLine1 String
+  addressLine2 String
+  postcode     String
+  city         String
+  status       String
+}
+
+model orders {
+  id         String @id
+  customerId String
+  paymentId  String
+  lineItems  Json
+  status     String
+}
+
+model products {
+  id          String  @id @db.Uuid
+  inventoryId String  @db.Uuid
+  name        String
+  description String
+  category    String
+  price       Int
+  photoUrl    String?
+  removed     Boolean
+}

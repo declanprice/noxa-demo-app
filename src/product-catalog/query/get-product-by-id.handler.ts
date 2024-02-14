@@ -1,10 +1,18 @@
-import { HandleQuery, QueryHandler } from '../../../lib';
-import { productsTable } from '../../schema';
 import { GetProductById } from '../api/queries/get-product-by-id.query';
+import { HandleQuery, QueryHandler, QueryMessage } from '@declanprice/noxa';
+import { DatabaseClient } from '@declanprice/noxa/dist/lib/store/database-client.service';
 
 @QueryHandler(GetProductById)
 export class GetProductByIdHandler extends HandleQuery {
-    async handle(query: GetProductById) {
-        return this.dataStore.get(productsTable, query.id);
+    constructor(readonly db: DatabaseClient) {
+        super();
+    }
+
+    async handle(query: QueryMessage<GetProductById>) {
+        return this.db.products.findUniqueOrThrow({
+            where: {
+                id: query.data.id,
+            },
+        });
     }
 }

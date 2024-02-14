@@ -1,5 +1,4 @@
-import { Stream, StreamEventHandler } from '../../../lib';
-
+import { Stream, StreamHandler } from '@declanprice/noxa';
 import { OrderRequestedEvent } from '../api/events/order-requested.event';
 import { OrderLineItem } from '../api/commands/order-line-item.type';
 import { OrderStatus } from '../api/commands/order-status.enum';
@@ -12,7 +11,7 @@ export class OrderStream {
     status: OrderStatus;
     lineItems: OrderLineItem[];
 
-    @StreamEventHandler(OrderRequestedEvent)
+    @StreamHandler(OrderRequestedEvent)
     onPlaced(event: OrderRequestedEvent) {
         this.id = event.orderId;
         this.lineItems = event.lineItems;

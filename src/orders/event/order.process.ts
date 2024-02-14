@@ -1,13 +1,4 @@
-import {
-    HandleProcess,
-    OutboxStore,
-    Process,
-    ProcessHandler,
-    RabbitmqEventConsumerType,
-} from '../../../lib';
-
 import { OrderRequestedEvent } from '../api/events/order-requested.event';
-import { ProcessSession } from '../../../lib/handlers/process/process.session';
 import { ValidateProductsCommand } from '../../product-catalog/api/commands/validate-products.command';
 import { ValidateInventoryCommand } from '../../inventory/api/commands/validate-inventory.command';
 import { ProductsValidatedEvent } from '../../product-catalog/api/events/products-validated.event';
@@ -25,6 +16,14 @@ import { CancelOrderCommand } from '../api/commands/cancel-order.command';
 import { InventoryValidationSuccessEvent } from '../../inventory/api/events/inventory-validation-success.event';
 import { PlaceOrderCommand } from '../api/commands/place-order.command';
 
+import {
+    OutboxStore,
+    Process,
+    ProcessHandler,
+    RabbitmqEventConsumerType,
+} from '@declanprice/noxa';
+import { ProcessSession } from '@declanprice/noxa/dist/lib/handlers/process/process.session';
+
 type OrderProcessData = {
     orderId: string;
     paymentId: string;
@@ -33,90 +32,106 @@ type OrderProcessData = {
     paymentCaptured: boolean;
 };
 
-type OrderProcessSession = ProcessSession<OrderProcessData>;
-
 @Process({
     consumerType: RabbitmqEventConsumerType.SINGLE_ACTIVE_CONSUMER,
     defaultAssociationKey: 'orderId',
 })
-export class OrderProcess extends HandleProcess {
+export class OrderProcess {
+    constructor(readonly outbox: OutboxStore) {}
+
     @ProcessHandler(OrderRequestedEvent, { start: true })
     async onOrderPlaced(
-        event: OrderRequestedEvent,
-        session: OrderProcessSession,
+        session: ProcessSession<OrderRequestedEvent, OrderProcessData>,
     ) {
-        session.update({
-            orderId: event.orderId,
-            paymentId: event.paymentId,
-            customerId: event.customerId,
-            lineItems: event.lineItems,
-            paymentCaptured: false,
-        });
+        const { event, data, tx } = session;
 
-        await session.outboxStore.publishCommand(
+        data.orderId = event.data.orderId;
+        data.customerId = event.data.customerId;
+        data.paymentId = event.data.paymentId;
+        data.lineItems = event.data.lineItems;
+        data.paymentCaptured = false;
+
+        await this.outbox.command(
             new ValidateProductsCommand(
-                event.orderId,
-                event.lineItems.map((i) => ({
+                event.data.orderId,
+                event.data.lineItems.map((i) => ({
                     productId: i.productId,
                     inventoryId: i.inventoryId,
                     price: i.price,
                 })),
             ),
+            { tx },
         );
     }
 
     @ProcessHandler(ProductsValidatedEvent)
     async onProductsValidated(
-        event: ProductsValidatedEvent,
-        session: OrderProcessSession,
+        session: ProcessSession<ProductsValidatedEvent, OrderProcessData>,
     ) {
-        await session.outboxStore.publishCommand(
+        const { event, data, tx } = session;
+
+        await this.outbox.command(
             new ValidateInventoryCommand(
-                event.orderId,
+                event.data.orderId,
                 session.data.lineItems.map((i) => ({
                     inventoryId: i.inventoryId,
                     quantity: i.quantity,
                 })),
             ),
+            {
+                tx,
+            },
         );
     }
 
     @ProcessHandler(InventoryValidationSuccessEvent)
     async onInventoryReserved(
-        event: InventoryValidationSuccessEvent,
-        session: OrderProcessSession,
+        session: ProcessSession<
+            InventoryValidationSuccessEvent,
+            OrderProcessData
+        >,
     ) {
-        await session.outboxStore.publishCommand(
-            new CapturePaymentCommand(event.orderId),
+        const { event, tx } = session;
+
+        await this.outbox.command(
+            new CapturePaymentCommand(event.data.orderId),
+            {
+                tx,
+            },
         );
     }
 
     @ProcessHandler(PaymentCapturedEvent)
     async onPaymentCaptured(
-        event: PaymentCapturedEvent,
-        session: OrderProcessSession,
+        session: ProcessSession<PaymentCapturedEvent, OrderProcessData>,
     ) {
-        session.update({
-            paymentCaptured: true,
-        });
+        const { event, data, tx } = session;
 
-        await session.outboxStore.publishCommand(
-            new PlaceOrderCommand(event.orderId),
-        );
+        data.paymentCaptured = true;
+
+        await this.outbox.command(new PlaceOrderCommand(event.data.orderId), {
+            tx,
+        });
     }
 
     @ProcessHandler(ShipmentDeliveredEvent)
     async onShipmentDelivered(
-        event: ShipmentDeliveredEvent,
-        session: OrderProcessSession,
+        session: ProcessSession<ShipmentDeliveredEvent, OrderProcessData>,
     ) {
-        await session.outboxStore.publishCommand(
-            new CompleteOrderCommand(event.orderId),
+        const { event, tx } = session;
+
+        await this.outbox.command(
+            new CompleteOrderCommand(event.data.orderId),
+            {
+                tx,
+            },
         );
     }
 
     @ProcessHandler(OrderCompleteEvent)
-    async onComplete(event: OrderCompleteEvent, session: OrderProcessSession) {
+    async onComplete(
+        session: ProcessSession<ShipmentDeliveredEvent, OrderProcessData>,
+    ) {
         session.end();
     }
 
@@ -127,17 +142,29 @@ export class OrderProcess extends HandleProcess {
         ProductsValidationFailedEvent,
         InventoryValidationFailedEvent,
     ])
-    async onFail(event: any, session: OrderProcessSession) {
-        await session.outboxStore.publishCommand(
-            new CancelOrderCommand(event.orderId),
-        );
+    async onFail(
+        session: ProcessSession<
+            ProductsValidationFailedEvent | InventoryValidationFailedEvent,
+            OrderProcessData
+        >,
+    ) {
+        const { event, tx } = session;
+
+        await this.outbox.command(new CancelOrderCommand(event.data.orderId), {
+            tx,
+        });
     }
 
     @ProcessHandler(OrderCanceledEvent)
-    async onCancel(event: any, session: OrderProcessSession) {
+    async onCancel(
+        session: ProcessSession<OrderCanceledEvent, OrderProcessData>,
+    ) {
+        const { tx } = session;
+
         if (session.data.paymentCaptured) {
-            await session.outboxStore.publishCommand(
+            await this.outbox.command(
                 new RefundPaymentCommand(session.data.paymentId),
+                { tx },
             );
         }
 

@@ -6,8 +6,8 @@ import * as path from 'path';
 import { ProductResolver } from './resolvers/product.resolver';
 import { InventoryResolver } from './resolvers/inventory.resolver';
 import { DataLoaderService } from './dataloader/data-loader.service';
-import { QueryBus } from '../../lib';
 import { UserResolver } from './resolvers/user.resolver';
+import { QueryBus } from '@declanprice/noxa';
 
 @Module({
     providers: [ProductResolver, InventoryResolver, UserResolver],

@@ -1,22 +1,37 @@
-import { CommandHandler, DatabaseSession, HandleCommand } from '../../../lib';
+import {
+    CommandHandler,
+    CommandMessage,
+    HandleCommand,
+    OutboxStore,
+} from '@declanprice/noxa';
+import { DatabaseClient } from '@declanprice/noxa/dist/lib/store/database-client.service';
+
 import { ValidateInventoryCommand } from '../api/commands/validate-inventory.command';
 import { InventoryValidationSuccessEvent } from '../api/events/inventory-validation-success.event';
 import { InventoryValidationFailedEvent } from '../api/events/inventory-validation-failed.event';
-import { inventoryTable } from '../../schema';
 
 @CommandHandler(ValidateInventoryCommand)
 export class ValidateInventoryHandler extends HandleCommand {
-    async handle(command: ValidateInventoryCommand, session: DatabaseSession) {
-        const orderId = command.orderId;
-        const validateInventory = command.inventory;
+    constructor(
+        readonly db: DatabaseClient,
+        readonly outbox: OutboxStore,
+    ) {
+        super();
+    }
+
+    async handle(command: CommandMessage<ValidateInventoryCommand>) {
+        const orderId = command.data.orderId;
+
+        const validateInventory = command.data.inventory;
 
         let isValid = true;
 
         for (const { inventoryId, quantity } of validateInventory) {
-            const foundInventory = await session.dataStore.get(
-                inventoryTable,
-                inventoryId,
-            );
+            const foundInventory = await this.db.inventory.findUniqueOrThrow({
+                where: {
+                    id: inventoryId,
+                },
+            });
 
             if (foundInventory.quantityAvailable - quantity < 0) {
                 isValid = false;
@@ -24,11 +39,11 @@ export class ValidateInventoryHandler extends HandleCommand {
         }
 
         if (isValid) {
-            await session.outboxStore.publishEvent(
+            await this.outbox.event(
                 new InventoryValidationSuccessEvent(orderId),
             );
         } else {
-            await session.outboxStore.publishEvent(
+            await this.outbox.event(
                 new InventoryValidationFailedEvent(orderId),
             );
         }

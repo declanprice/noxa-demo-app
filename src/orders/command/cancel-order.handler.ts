@@ -1,19 +1,37 @@
-import { CommandHandler, DatabaseSession, HandleCommand } from '../../../lib';
+import {
+    CommandHandler,
+    CommandMessage,
+    EventStore,
+    HandleCommand,
+    OutboxStore,
+} from '@declanprice/noxa';
+import { DatabaseClient } from '@declanprice/noxa/dist/lib/store/database-client.service';
 import { OrderStream } from './order.stream';
 import { CancelOrderCommand } from '../api/commands/cancel-order.command';
 import { OrderCanceledEvent } from '../api/events/order-canceled.event';
 
 @CommandHandler(CancelOrderCommand)
 export class PlaceOrderHandler extends HandleCommand {
-    async handle(command: CancelOrderCommand, session: DatabaseSession) {
-        const cancelEvent = new OrderCanceledEvent(command.orderId);
+    constructor(
+        readonly db: DatabaseClient,
+        readonly event: EventStore,
+        readonly outbox: OutboxStore,
+    ) {
+        super();
+    }
 
-        await session.eventStore.startStream(
-            OrderStream,
-            command.orderId,
-            cancelEvent,
-        );
+    async handle(command: CommandMessage<CancelOrderCommand>) {
+        const cancelEvent = new OrderCanceledEvent(command.data.orderId);
 
-        await session.outboxStore.publishEvent(cancelEvent);
+        await this.db.$transaction(async (tx) => {
+            await this.event.startStream(
+                OrderStream,
+                command.data.orderId,
+                cancelEvent,
+                { tx },
+            );
+
+            await this.outbox.event(cancelEvent, { tx });
+        });
     }
 }

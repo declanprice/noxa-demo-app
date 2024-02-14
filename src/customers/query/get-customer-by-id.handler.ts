@@ -1,12 +1,18 @@
-import { HandleQuery, QueryHandler } from '../../../lib';
-
+import { HandleQuery, QueryHandler, QueryMessage } from '@declanprice/noxa';
+import { DatabaseClient } from '@declanprice/noxa/dist/lib/store/database-client.service';
 import { GetCustomerById } from '../api/queries/get-customer-by-id.query';
-
-import { customersTable } from '../../schema';
 
 @QueryHandler(GetCustomerById)
 export class GetCustomerByIdHandler extends HandleQuery {
-    async handle(query: GetCustomerById) {
-        return this.dataStore.get(customersTable, query.customerId);
+    constructor(readonly db: DatabaseClient) {
+        super();
+    }
+
+    async handle(query: QueryMessage<GetCustomerById>) {
+        return this.db.customers.findUnique({
+            where: {
+                id: query.data.customerId,
+            },
+        });
     }
 }

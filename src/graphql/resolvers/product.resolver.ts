@@ -7,11 +7,11 @@ import {
     Context,
 } from '@nestjs/graphql';
 import { Product } from '../model/product.model';
-import { QueryBus } from '../../../lib';
 import { GetProductById } from '../../product-catalog/api/queries/get-product-by-id.query';
 import { SearchProductsQuery } from '../../product-catalog/api/queries/search-products.query';
 import { Inventory } from '../model/inventory.model';
 import * as DataLoader from 'dataloader';
+import { QueryBus } from '@declanprice/noxa';
 
 @Resolver((of: any) => Product)
 export class ProductResolver {
@@ -28,11 +28,7 @@ export class ProductResolver {
     ) {
         console.log(name);
 
-        return this.queryBus.invoke(
-            new SearchProductsQuery({
-                name,
-            }),
-        );
+        return this.queryBus.invoke(new SearchProductsQuery(name));
     }
 
     @ResolveField()
